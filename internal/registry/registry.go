@@ -20,7 +20,7 @@ package registry
 import (
 	"fmt"
 
-	"github.com/elastic/go-sysinfo/types"
+	"github.com/vansante/go-sysinfo/types"
 )
 
 var (

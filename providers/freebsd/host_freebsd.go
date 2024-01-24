@@ -31,9 +31,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/procfs"
 
-	"github.com/elastic/go-sysinfo/internal/registry"
-	"github.com/elastic/go-sysinfo/providers/shared"
-	"github.com/elastic/go-sysinfo/types"
+	"github.com/vansante/go-sysinfo/internal/registry"
+	"github.com/vansante/go-sysinfo/providers/shared"
+	"github.com/vansante/go-sysinfo/types"
 )
 
 func init() {
@@ -58,7 +58,7 @@ func (s freebsdSystem) Host() (types.Host, error) {
 
 type host struct {
 	procFS procFS
-	info types.HostInfo
+	info   types.HostInfo
 }
 
 func (h *host) Info() types.HostInfo {

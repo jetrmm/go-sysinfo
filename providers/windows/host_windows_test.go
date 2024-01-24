@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/elastic/go-sysinfo/internal/registry"
+	"github.com/vansante/go-sysinfo/internal/registry"
 )
 
 var _ registry.HostProvider = windowsSystem{}

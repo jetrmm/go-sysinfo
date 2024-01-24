@@ -31,9 +31,9 @@ import (
 
 	windows "github.com/elastic/go-windows"
 
-	"github.com/elastic/go-sysinfo/internal/registry"
-	"github.com/elastic/go-sysinfo/providers/shared"
-	"github.com/elastic/go-sysinfo/types"
+	"github.com/vansante/go-sysinfo/internal/registry"
+	"github.com/vansante/go-sysinfo/providers/shared"
+	"github.com/vansante/go-sysinfo/types"
 )
 
 func init() {

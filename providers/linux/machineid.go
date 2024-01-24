@@ -23,7 +23,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/elastic/go-sysinfo/types"
+	"github.com/vansante/go-sysinfo/types"
 )
 
 // Possible (current and historic) locations of the machine-id file.

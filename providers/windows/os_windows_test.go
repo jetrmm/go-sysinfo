@@ -25,7 +25,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/elastic/go-sysinfo/types"
+	"github.com/vansante/go-sysinfo/types"
 )
 
 func TestFixWindows11Naming(t *testing.T) {

@@ -20,7 +20,7 @@ package linux
 import (
 	"strconv"
 
-	"github.com/elastic/go-sysinfo/types"
+	"github.com/vansante/go-sysinfo/types"
 )
 
 type SeccompMode uint8
