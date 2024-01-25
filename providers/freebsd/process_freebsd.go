@@ -20,6 +20,7 @@ package freebsd
 import "C"
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -27,8 +28,6 @@ import (
 	"time"
 
 	"golang.org/x/sys/unix"
-
-	"github.com/pkg/errors"
 
 	"github.com/vansante/go-sysinfo/types"
 )
@@ -38,14 +37,14 @@ func getProcInfo(op int, arg int) ([]process, error) {
 	procstat, err := C.procstat_open_sysctl()
 
 	if procstat == nil {
-		return nil, errors.Wrap(err, "failed to open procstat sysctl")
+		return nil, fmt.Errorf("failed to open procstat sysctl: %w", err)
 	}
 	defer C.procstat_close(procstat)
 
 	var count C.uint = 0
 	kprocs, err := C.procstat_getprocs(procstat, C.int(op), C.int(arg), &count)
 	if kprocs == nil {
-		return nil, errors.Wrap(err, "getprocs failed")
+		return nil, fmt.Errorf("getprocs failed: %w", err)
 	}
 	defer C.procstat_freeprocs(procstat, kprocs)
 
@@ -96,7 +95,7 @@ func getProcEnv(p *process) (map[string]string, error) {
 	procstat, err := C.procstat_open_sysctl()
 
 	if procstat == nil {
-		return nil, errors.Wrap(err, "failed to open procstat sysctl")
+		return nil, fmt.Errorf("failed to open procstat sysctl: %w", err)
 	}
 	defer C.procstat_close(procstat)
 
@@ -110,7 +109,7 @@ func getProcArgs(p *process) ([]string, error) {
 	procstat, err := C.procstat_open_sysctl()
 
 	if procstat == nil {
-		return nil, errors.Wrap(err, "failed to open procstat sysctl")
+		return nil, fmt.Errorf("failed to open procstat sysctl: %w", err)
 	}
 	defer C.procstat_close(procstat)
 
@@ -124,7 +123,7 @@ func getProcPathname(p *process) (string, error) {
 	procstat, err := C.procstat_open_sysctl()
 
 	if procstat == nil {
-		return "", errors.Wrap(err, "failed to open procstat sysctl")
+		return "", fmt.Errorf("failed to open procstat sysctl: %w", err)
 	}
 	defer C.procstat_close(procstat)
 
@@ -153,13 +152,13 @@ func getProcCWD(p *process) (string, error) {
 	procstat, err := C.procstat_open_sysctl()
 
 	if procstat == nil {
-		return "", errors.Wrap(err, "failed to open procstat sysctl")
+		return "", fmt.Errorf("failed to open procstat sysctl: %w", err)
 	}
 	defer C.procstat_close(procstat)
 
 	fs, err := C.procstat_getfiles(procstat, &p.kinfo, 0)
 	if fs == nil {
-		return "", errors.Wrap(err, "failed to get files")
+		return "", fmt.Errorf("failed to get files: %w", err)
 	}
 
 	defer C.procstat_freefiles(procstat, fs)

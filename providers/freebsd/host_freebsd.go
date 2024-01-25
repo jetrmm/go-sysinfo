@@ -18,6 +18,8 @@
 package freebsd
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -28,7 +30,6 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/joeshaw/multierror"
-	"github.com/pkg/errors"
 	"github.com/prometheus/procfs"
 
 	"github.com/vansante/go-sysinfo/internal/registry"
@@ -106,7 +107,7 @@ type reader struct {
 
 func (r *reader) addErr(err error) bool {
 	if err != nil {
-		if errors.Cause(err) != types.ErrNotImplemented {
+		if errors.Is(err, types.ErrNotImplemented) {
 			r.errs = append(r.errs, err)
 		}
 		return true
@@ -263,12 +264,12 @@ const (
 func Cptime() (map[string]uint64, error) {
 	clock, err := unix.SysctlClockinfo(kernClockrateMIB)
 	if err != nil {
-		return make(map[string]uint64), errors.Wrap(err, "failed to get kern.clockrate")
+		return make(map[string]uint64), fmt.Errorf("failed to get kern.clockrate: %w", err)
 	}
 
 	cptime, err := syscall.Sysctl(kernCptimeMIB)
 	if err != nil {
-		return make(map[string]uint64), errors.Wrap(err, "failed to get kern.cp_time")
+		return make(map[string]uint64), fmt.Errorf("failed to get kern.cp_time: %w", err)
 	}
 
 	cpMap := make(map[string]uint64)
@@ -279,7 +280,7 @@ func Cptime() (map[string]uint64, error) {
 	for index, time := range times {
 		i, err := strconv.ParseUint(time, 10, 64)
 		if err != nil {
-			return cpMap, errors.Wrap(err, "error parsing kern.cp_time")
+			return cpMap, fmt.Errorf("error parsing kern.cp_time: %w", err)
 		}
 
 		cpMap[names[index]] = i * uint64(clock.Tick) * 1000
