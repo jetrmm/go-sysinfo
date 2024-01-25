@@ -31,5 +31,3 @@ import "C"
 type vmTotal C.struct_vmtotal
 
 type kvmSwap C.struct_kvm_swap
-
-type clockInfo C.struct_clockinfo

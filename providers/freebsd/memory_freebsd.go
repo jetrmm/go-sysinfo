@@ -20,8 +20,6 @@
 
 package freebsd
 
-import "C"
-
 import (
 	"fmt"
 
@@ -32,7 +30,9 @@ const (
 	hwPhysmemMIB         = "hw.physmem"
 	hwPagesizeMIB        = "hw.pagesize"
 	vmVmtotalMIB         = "vm.vmtotal"
+	vmFreeCount          = "vm.stats.vm.v_free_count"
 	vmSwapmaxpagesMIB    = "vm.swap_maxpages"
+	vmSwapTotal          = "vm.swap_total"
 	vfsNumfreebuffersMIB = "vfs.numfreebuffers"
 	devNull              = "/dev/null"
 	kvmOpen              = "kvm_open"
@@ -65,14 +65,13 @@ func TotalMemory() (uint64, error) {
 	return size, nil
 }
 
-func VmTotal() (vmTotal, error) {
-	var vm vmTotal
-	// TODO:FIXME: Disabled
-	//if err := sysctlByName(vmVmtotalMIB, &vm); err != nil {
-	//	return vmTotal{}, errors.Wrap(err, "failed to get vm.vmtotal")
-	//}
+func FreeMemory() (uint32, error) {
+	free, err := unix.SysctlUint32(vmFreeCount)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get vm.stats.vm.v_free_count: %w", err)
+	}
 
-	return vm, nil
+	return free, nil
 }
 
 func NumFreeBuffers() (uint32, error) {
@@ -85,24 +84,11 @@ func NumFreeBuffers() (uint32, error) {
 	return numfreebuffers, nil
 }
 
-func KvmGetSwapInfo() (kvmSwap, error) {
-	//var kdC *C.struct_kvm_t
-	//
-	//devNullC := C.CString(devNull)
-	//defer C.free(unsafe.Pointer(devNullC))
-	//kvmOpenC := C.CString(kvmOpen)
-	//defer C.free(unsafe.Pointer(kvmOpenC))
-	//
-	//if kdC, err := C.kvm_open(nil, devNullC, nil, syscall.O_RDONLY, kvmOpenC); kdC == nil {
-	//	return kvmSwap{}, errors.Wrap(err, "failed to open kvm")
-	//}
-	//
-	//defer C.kvm_close((*C.struct___kvm)(unsafe.Pointer(kdC)))
-
-	var swap kvmSwap
-	//if n, err := C.kvm_getswapinfo((*C.struct___kvm)(unsafe.Pointer(kdC)), (*C.struct_kvm_swap)(unsafe.Pointer(&swap)), 1, 0); n != 0 {
-	//	return kvmSwap{}, errors.Wrap(err, "failed to get kvm_getswapinfo")
-	//}
+func SwapTotal() (uint32, error) {
+	swap, err := unix.SysctlUint32(vmSwapTotal)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get vm.swap_total: %w", err)
+	}
 
 	return swap, nil
 }
