@@ -17,50 +17,6 @@
 
 package freebsd
 
-// #cgo LDFLAGS: -lkvm -lprocstat
-//#include <sys/types.h>
-//#include <sys/sysctl.h>
-//#include <sys/time.h>
-//#include <sys/param.h>
-//#include <sys/queue.h>
-//#include <sys/socket.h>
-//#include <sys/user.h>
-//
-//#include <libprocstat.h>
-//#include <string.h>
-//struct kinfo_proc getProcInfoAt(struct kinfo_proc *procs, unsigned int index) {
-//  return procs[index];
-//}
-//unsigned int countArrayItems(char **items) {
-//  unsigned int i = 0;
-//  for (i = 0; items[i] != NULL; ++i);
-//  return i;
-//}
-//char * itemAtIndex(char **items, unsigned int index) {
-//  return items[index];
-//}
-//unsigned int countFileStats(struct filestat_list *head) {
-//  unsigned int count = 0;
-//  struct filestat *fst;
-//  STAILQ_FOREACH(fst, head, next) {
-//    ++count;
-//  }
-//
-//  return count;
-//}
-//void copyFileStats(struct filestat_list *head, struct filestat *out, unsigned int size) {
-//  unsigned int index = 0;
-//  struct filestat *fst;
-//  STAILQ_FOREACH(fst, head, next) {
-//    if (!size) {
-//      break;
-//    }
-//    memcpy(out, fst, sizeof(*fst));
-//    ++out;
-//    --size;
-//  }
-//}
-//
 import "C"
 
 import (
@@ -68,8 +24,9 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/pkg/errors"
 
@@ -77,6 +34,7 @@ import (
 )
 
 func getProcInfo(op int, arg int) ([]process, error) {
+	unix.Sys
 	procstat, err := C.procstat_open_sysctl()
 
 	if procstat == nil {
@@ -388,40 +346,6 @@ func (s freebsdSystem) Process(pid int) (types.Process, error) {
 
 func (s freebsdSystem) Self() (types.Process, error) {
 	return s.Process(os.Getpid())
-}
-
-const (
-	kernCptimeMIB    = "kern.cp_time"
-	kernClockrateMIB = "kern.clockrate"
-)
-
-func Cptime() (map[string]uint64, error) {
-	var clock clockInfo
-
-	if err := sysctlByName(kernClockrateMIB, &clock); err != nil {
-		return make(map[string]uint64), errors.Wrap(err, "failed to get kern.clockrate")
-	}
-
-	cptime, err := syscall.Sysctl(kernCptimeMIB)
-	if err != nil {
-		return make(map[string]uint64), errors.Wrap(err, "failed to get kern.cp_time")
-	}
-
-	cpMap := make(map[string]uint64)
-
-	times := strings.Split(cptime, " ")
-	names := [5]string{"User", "Nice", "System", "IRQ", "Idle"}
-
-	for index, time := range times {
-		i, err := strconv.ParseUint(time, 10, 64)
-		if err != nil {
-			return cpMap, errors.Wrap(err, "error parsing kern.cp_time")
-		}
-
-		cpMap[names[index]] = i * uint64(clock.Tick) * 1000
-	}
-
-	return cpMap, nil
 }
 
 func (p *process) Parent() (types.Process, error) {

@@ -18,17 +18,17 @@
 package freebsd
 
 import (
-	"syscall"
+	"fmt"
 
-	"github.com/pkg/errors"
+	"golang.org/x/sys/unix"
 )
 
 const kernelReleaseMIB = "kern.osrelease"
 
 func KernelVersion() (string, error) {
-	version, err := syscall.Sysctl(kernelReleaseMIB)
+	version, err := unix.Sysctl(kernelReleaseMIB)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to get kernel version")
+		return "", fmt.Errorf("failed to get kernel version: %w", err)
 	}
 
 	return version, nil
