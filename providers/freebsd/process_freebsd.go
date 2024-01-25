@@ -15,6 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
+//go:build freebsd && cgo
+// +build freebsd,cgo
+
 package freebsd
 
 // #cgo LDFLAGS: -lkvm -lprocstat
@@ -64,14 +67,12 @@ package freebsd
 import "C"
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/vansante/go-sysinfo/types"
 )
@@ -80,14 +81,14 @@ func getProcInfo(op int, arg int) ([]process, error) {
 	procstat, err := C.procstat_open_sysctl()
 
 	if procstat == nil {
-		return nil, errors.Wrap(err, "failed to open procstat sysctl")
+		return nil, fmt.Errorf("failed to open procstat sysctl: %w", err)
 	}
 	defer C.procstat_close(procstat)
 
 	var count C.uint = 0
 	kprocs, err := C.procstat_getprocs(procstat, C.int(op), C.int(arg), &count)
 	if kprocs == nil {
-		return nil, errors.Wrap(err, "getprocs failed")
+		return nil, fmt.Errorf("getprocs failed: %w", err)
 	}
 	defer C.procstat_freeprocs(procstat, kprocs)
 
@@ -138,7 +139,7 @@ func getProcEnv(p *process) (map[string]string, error) {
 	procstat, err := C.procstat_open_sysctl()
 
 	if procstat == nil {
-		return nil, errors.Wrap(err, "failed to open procstat sysctl")
+		return nil, fmt.Errorf("failed to open procstat sysctl: %w", err)
 	}
 	defer C.procstat_close(procstat)
 
@@ -152,7 +153,7 @@ func getProcArgs(p *process) ([]string, error) {
 	procstat, err := C.procstat_open_sysctl()
 
 	if procstat == nil {
-		return nil, errors.Wrap(err, "failed to open procstat sysctl")
+		return nil, fmt.Errorf("failed to open procstat sysctl: %w", err)
 	}
 	defer C.procstat_close(procstat)
 
@@ -166,7 +167,7 @@ func getProcPathname(p *process) (string, error) {
 	procstat, err := C.procstat_open_sysctl()
 
 	if procstat == nil {
-		return "", errors.Wrap(err, "failed to open procstat sysctl")
+		return "", fmt.Errorf("failed to open procstat sysctl: %w", err)
 	}
 	defer C.procstat_close(procstat)
 
@@ -195,13 +196,13 @@ func getProcCWD(p *process) (string, error) {
 	procstat, err := C.procstat_open_sysctl()
 
 	if procstat == nil {
-		return "", errors.Wrap(err, "failed to open procstat sysctl")
+		return "", fmt.Errorf("failed to open procstat sysctl: %w", err)
 	}
 	defer C.procstat_close(procstat)
 
 	fs, err := C.procstat_getfiles(procstat, &p.kinfo, 0)
 	if fs == nil {
-		return "", errors.Wrap(err, "failed to get files")
+		return "", fmt.Errorf("failed to get files: %w", err)
 	}
 
 	defer C.procstat_freefiles(procstat, fs)
@@ -388,40 +389,6 @@ func (s freebsdSystem) Process(pid int) (types.Process, error) {
 
 func (s freebsdSystem) Self() (types.Process, error) {
 	return s.Process(os.Getpid())
-}
-
-const (
-	kernCptimeMIB    = "kern.cp_time"
-	kernClockrateMIB = "kern.clockrate"
-)
-
-func Cptime() (map[string]uint64, error) {
-	var clock clockInfo
-
-	if err := sysctlByName(kernClockrateMIB, &clock); err != nil {
-		return make(map[string]uint64), errors.Wrap(err, "failed to get kern.clockrate")
-	}
-
-	cptime, err := syscall.Sysctl(kernCptimeMIB)
-	if err != nil {
-		return make(map[string]uint64), errors.Wrap(err, "failed to get kern.cp_time")
-	}
-
-	cpMap := make(map[string]uint64)
-
-	times := strings.Split(cptime, " ")
-	names := [5]string{"User", "Nice", "System", "IRQ", "Idle"}
-
-	for index, time := range times {
-		i, err := strconv.ParseUint(time, 10, 64)
-		if err != nil {
-			return cpMap, errors.Wrap(err, "error parsing kern.cp_time")
-		}
-
-		cpMap[names[index]] = i * uint64(clock.Tick) * 1000
-	}
-
-	return cpMap, nil
 }
 
 func (p *process) Parent() (types.Process, error) {

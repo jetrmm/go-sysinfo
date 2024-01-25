@@ -15,100 +15,79 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//go:build freebsd && cgo
-// +build freebsd,cgo
+//go:build freebsd
+// +build freebsd
 
 package freebsd
 
-// #cgo LDFLAGS: -lkvm
-//#include <sys/cdefs.h>
-//#include <sys/types.h>
-//#include <sys/sysctl.h>
-
-//#include <paths.h>
-//#include <kvm.h>
-//#include <stdlib.h>
-import "C"
-
 import (
-	"syscall"
-	"unsafe"
+	"fmt"
 
-	"github.com/pkg/errors"
+	"golang.org/x/sys/unix"
 )
 
 const (
 	hwPhysmemMIB         = "hw.physmem"
 	hwPagesizeMIB        = "hw.pagesize"
 	vmVmtotalMIB         = "vm.vmtotal"
+	vmFreeCount          = "vm.stats.vm.v_free_count"
 	vmSwapmaxpagesMIB    = "vm.swap_maxpages"
+	vmSwapTotal          = "vm.swap_total"
 	vfsNumfreebuffersMIB = "vfs.numfreebuffers"
 	devNull              = "/dev/null"
 	kvmOpen              = "kvm_open"
 )
 
 func PageSize() (uint32, error) {
-	var pageSize uint32
-	if err := sysctlByName(hwPagesizeMIB, &pageSize); err != nil {
-		return 0, errors.Wrap(err, "failed to get hw.pagesize")
+	pageSize, err := unix.SysctlUint32(hwPagesizeMIB)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get hw.pagesize: %w", err)
 	}
 
 	return pageSize, nil
 }
 
 func SwapMaxPages() (uint32, error) {
-	var maxPages uint32
-	if err := sysctlByName(hwPhysmemMIB, &maxPages); err != nil {
-		return 0, errors.Wrap(err, "failed to get vm.swap_maxpages")
+	maxPages, err := unix.SysctlUint32(vmSwapmaxpagesMIB)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get vm.swap_maxpages: %w", err)
 	}
 
 	return maxPages, nil
 }
 
 func TotalMemory() (uint64, error) {
-	var size uint64
-	if err := sysctlByName(hwPhysmemMIB, &size); err != nil {
-		return 0, errors.Wrap(err, "failed to get hw.physmem")
+	size, err := unix.SysctlUint64(hwPhysmemMIB)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get hw.physmem: %w", err)
 	}
 
 	return size, nil
 }
 
-func VmTotal() (vmTotal, error) {
-	var vm vmTotal
-	if err := sysctlByName(vmVmtotalMIB, &vm); err != nil {
-		return vmTotal{}, errors.Wrap(err, "failed to get vm.vmtotal")
+func FreeMemory() (uint32, error) {
+	free, err := unix.SysctlUint32(vmFreeCount)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get vm.stats.vm.v_free_count: %w", err)
 	}
 
-	return vm, nil
+	return free, nil
 }
 
 func NumFreeBuffers() (uint32, error) {
 	var numfreebuffers uint32
-	if err := sysctlByName(vfsNumfreebuffersMIB, &numfreebuffers); err != nil {
-		return 0, errors.Wrap(err, "failed to get vfs.numfreebuffers")
+	numfreebuffers, err := unix.SysctlUint32(vfsNumfreebuffersMIB)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get vfs.numfreebuffers: %w", err)
 	}
 
 	return numfreebuffers, nil
 }
 
-func KvmGetSwapInfo() (kvmSwap, error) {
-	var kdC *C.struct_kvm_t
-
-	devNullC := C.CString(devNull)
-	defer C.free(unsafe.Pointer(devNullC))
-	kvmOpenC := C.CString(kvmOpen)
-	defer C.free(unsafe.Pointer(kvmOpenC))
-
-	if kdC, err := C.kvm_open(nil, devNullC, nil, syscall.O_RDONLY, kvmOpenC); kdC == nil {
-		return kvmSwap{}, errors.Wrap(err, "failed to open kvm")
-	}
-
-	defer C.kvm_close((*C.struct___kvm)(unsafe.Pointer(kdC)))
-
-	var swap kvmSwap
-	if n, err := C.kvm_getswapinfo((*C.struct___kvm)(unsafe.Pointer(kdC)), (*C.struct_kvm_swap)(unsafe.Pointer(&swap)), 1, 0); n != 0 {
-		return kvmSwap{}, errors.Wrap(err, "failed to get kvm_getswapinfo")
+func SwapTotal() (uint32, error) {
+	swap, err := unix.SysctlUint32(vmSwapTotal)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get vm.swap_total: %w", err)
 	}
 
 	return swap, nil

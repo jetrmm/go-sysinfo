@@ -17,18 +17,19 @@
 
 package freebsd
 
-// #cgo LDFLAGS: -lkvm
-//#include <kvm.h>
-//#include <sys/vmmeter.h>
-import "C"
-
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
 	"time"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/joeshaw/multierror"
-	"github.com/pkg/errors"
 	"github.com/prometheus/procfs"
 
 	"github.com/vansante/go-sysinfo/internal/registry"
@@ -63,6 +64,10 @@ type host struct {
 
 func (h *host) Info() types.HostInfo {
 	return h.info
+}
+
+func (h *host) FQDN() (string, error) {
+	return shared.FQDN()
 }
 
 func (h *host) CPUTime() (types.CPUTimes, error) {
@@ -100,7 +105,7 @@ type reader struct {
 
 func (r *reader) addErr(err error) bool {
 	if err != nil {
-		if errors.Cause(err) != types.ErrNotImplemented {
+		if errors.Is(err, types.ErrNotImplemented) {
 			r.errs = append(r.errs, err)
 		}
 		return true
@@ -131,24 +136,21 @@ func (r *reader) cpuTime(cpu *types.CPUTimes) {
 
 func (r *reader) memInfo(m *types.HostMemoryInfo) {
 	pageSize, err := PageSize()
-
 	if r.addErr(err) {
 		return
 	}
 
-	totalMemory, err := TotalMemory()
+	m.Total, err = TotalMemory()
 	if r.addErr(err) {
 		return
 	}
 
-	m.Total = totalMemory
-
-	vm, err := VmTotal()
+	free, err := FreeMemory()
 	if r.addErr(err) {
 		return
 	}
 
-	m.Free = uint64(vm.Free) * uint64(pageSize)
+	m.Free = uint64(free) * uint64(pageSize)
 	m.Used = m.Total - m.Free
 
 	numFreeBuffers, err := NumFreeBuffers()
@@ -158,23 +160,24 @@ func (r *reader) memInfo(m *types.HostMemoryInfo) {
 
 	m.Available = m.Free + (uint64(numFreeBuffers) * uint64(pageSize))
 
-	swap, err := KvmGetSwapInfo()
-	if r.addErr(err) {
-		return
-	}
-
 	swapMaxPages, err := SwapMaxPages()
 	if r.addErr(err) {
 		return
 	}
 
-	if swap.Total > swapMaxPages {
-		swap.Total = swapMaxPages
+	swapTotal, err := SwapTotal()
+	if r.addErr(err) {
+		return
 	}
 
-	m.VirtualTotal = uint64(swap.Total) * uint64(pageSize)
-	m.VirtualUsed = uint64(swap.Used) * uint64(pageSize)
-	m.VirtualFree = m.VirtualTotal - m.VirtualUsed
+	if swapTotal > swapMaxPages {
+		swapTotal = swapMaxPages
+	}
+
+	m.VirtualTotal = uint64(swapTotal) * uint64(pageSize)
+	// TODO: FIXME: Where to get swap used?
+	//m.VirtualUsed = uint64(swap.Used) * uint64(pageSize)
+	//m.VirtualFree = m.VirtualTotal - m.VirtualUsed
 }
 
 func (r *reader) architecture(h *host) {
@@ -247,4 +250,37 @@ type procFS struct {
 func (fs *procFS) path(p ...string) string {
 	elem := append([]string{fs.mountPoint}, p...)
 	return filepath.Join(elem...)
+}
+
+const (
+	kernCptimeMIB    = "kern.cp_time"
+	kernClockrateMIB = "kern.clockrate"
+)
+
+func Cptime() (map[string]uint64, error) {
+	clock, err := unix.SysctlClockinfo(kernClockrateMIB)
+	if err != nil {
+		return make(map[string]uint64), fmt.Errorf("failed to get kern.clockrate: %w", err)
+	}
+
+	cptime, err := syscall.Sysctl(kernCptimeMIB)
+	if err != nil {
+		return make(map[string]uint64), fmt.Errorf("failed to get kern.cp_time: %w", err)
+	}
+
+	cpMap := make(map[string]uint64)
+
+	times := strings.Split(cptime, " ")
+	names := [5]string{"User", "Nice", "System", "IRQ", "Idle"}
+
+	for index, time := range times {
+		i, err := strconv.ParseUint(time, 10, 64)
+		if err != nil {
+			return cpMap, fmt.Errorf("error parsing kern.cp_time: %w", err)
+		}
+
+		cpMap[names[index]] = i * uint64(clock.Tick) * 1000
+	}
+
+	return cpMap, nil
 }

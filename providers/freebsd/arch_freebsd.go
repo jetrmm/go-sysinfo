@@ -15,21 +15,22 @@
 // specific language governing permissions and limitations
 // under the License.
 
+//go:build amd64 || arm64
+
 package freebsd
 
 import (
+	"fmt"
 	"syscall"
-
-	"github.com/pkg/errors"
 )
 
-const kernelReleaseMIB = "kern.osrelease"
+const hardwareMIB = "hw.machine"
 
-func KernelVersion() (string, error) {
-	version, err := syscall.Sysctl(kernelReleaseMIB)
+func Architecture() (string, error) {
+	arch, err := syscall.Sysctl(hardwareMIB)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to get kernel version")
+		return "", fmt.Errorf("failed to get architecture: %w", err)
 	}
 
-	return version, nil
+	return arch, nil
 }

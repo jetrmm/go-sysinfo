@@ -15,20 +15,22 @@
 // specific language governing permissions and limitations
 // under the License.
 
+//go:build amd64 || arm64
+
 package freebsd
 
 import (
-	"syscall"
+	"fmt"
 
-	"github.com/pkg/errors"
+	"golang.org/x/sys/unix"
 )
 
 const kernelHostUUIDMIB = "kern.hostuuid"
 
 func MachineID() (string, error) {
-	uuid, err := syscall.Sysctl(kernelHostUUIDMIB)
+	uuid, err := unix.Sysctl(kernelHostUUIDMIB)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to get machine id")
+		return "", fmt.Errorf("failed to get machine id: %w", err)
 	}
 
 	return uuid, nil
