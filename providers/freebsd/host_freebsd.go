@@ -150,8 +150,6 @@ func (r *reader) memInfo(m *types.HostMemoryInfo) {
 		return
 	}
 
-	fmt.Println("PAGE", free, pageSize)
-
 	m.Free = uint64(free) * uint64(pageSize)
 	m.Used = m.Total - m.Free
 
