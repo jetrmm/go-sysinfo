@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-// +build freebsd,cgo
+//go:build freebsd
 
 package freebsd
 
@@ -33,8 +33,6 @@ const (
 	vmSwapmaxpagesMIB    = "vm.swap_maxpages"
 	vmSwapTotal          = "vm.swap_total"
 	vfsNumfreebuffersMIB = "vfs.numfreebuffers"
-	devNull              = "/dev/null"
-	kvmOpen              = "kvm_open"
 )
 
 func PageSize() (uint32, error) {
@@ -87,6 +85,15 @@ func SwapTotal() (uint32, error) {
 	swap, err := unix.SysctlUint32(vmSwapTotal)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get vm.swap_total: %w", err)
+	}
+
+	return swap, nil
+}
+
+func SwapUsed() (uint32, error) {
+	swap, err := unix.SysctlUint32(vmSwapUsed)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get vm.swap_x: %w", err)
 	}
 
 	return swap, nil

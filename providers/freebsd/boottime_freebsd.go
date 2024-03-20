@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//go:build amd64 || arm64
+//go:build freebsd
 
 package freebsd
 
