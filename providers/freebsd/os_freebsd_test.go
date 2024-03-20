@@ -61,4 +61,22 @@ func TestOperatingSystem(t *testing.T) {
 		}, *os)
 		t.Logf("%#v", os)
 	})
+
+	t.Run("freebsd14", func(t *testing.T) {
+		os, err := getOSInfo("")
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, types.OSInfo{
+			Type:     "",
+			Family:   "freebsd",
+			Platform: "freebsd",
+			Name:     "FreeBSD",
+			Version:  "14.0-RELEASE",
+			Major:    14,
+			Minor:    0,
+			Patch:    0,
+		}, *os)
+		t.Logf("%#v", os)
+	})
 }
