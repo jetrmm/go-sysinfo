@@ -23,12 +23,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
-	"syscall"
 	"time"
-
-	"golang.org/x/sys/unix"
 
 	"github.com/joeshaw/multierror"
 	"github.com/prometheus/procfs"
@@ -197,8 +192,8 @@ func (r *reader) memInfo(m *types.HostMemoryInfo) {
 
 	m.VirtualTotal = uint64(swapTotal) * uint64(pageSize)
 	// TODO: FIXME: Where to get swap used?
-	//m.VirtualUsed = uint64(swap.Used) * uint64(pageSize)
-	//m.VirtualFree = m.VirtualTotal - m.VirtualUsed
+	// m.VirtualUsed = uint64(swapUsed) * uint64(pageSize)
+	// m.VirtualFree = m.VirtualTotal - m.VirtualUsed
 }
 
 func (r *reader) architecture(h *host) {

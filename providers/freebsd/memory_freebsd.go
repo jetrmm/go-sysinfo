@@ -28,7 +28,6 @@ import (
 const (
 	hwPhysmemMIB         = "hw.physmem"
 	hwPagesizeMIB        = "hw.pagesize"
-	vmVmtotalMIB         = "vm.vmtotal"
 	vmFreeCount          = "vm.stats.vm.v_free_count"
 	vmSwapmaxpagesMIB    = "vm.swap_maxpages"
 	vmSwapTotal          = "vm.swap_total"
@@ -85,15 +84,6 @@ func SwapTotal() (uint32, error) {
 	swap, err := unix.SysctlUint32(vmSwapTotal)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get vm.swap_total: %w", err)
-	}
-
-	return swap, nil
-}
-
-func SwapUsed() (uint32, error) {
-	swap, err := unix.SysctlUint32(vmSwapUsed)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get vm.swap_x: %w", err)
 	}
 
 	return swap, nil

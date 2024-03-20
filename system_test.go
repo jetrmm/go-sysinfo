@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
-	"fmt"
 	"os"
 	osUser "os/user"
 	"runtime"

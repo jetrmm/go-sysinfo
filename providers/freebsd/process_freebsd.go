@@ -16,33 +16,32 @@
 // under the License.
 
 //go:build freebsd && cgo
-// +build freebsd,cgo
 
 package freebsd
 
 // #cgo LDFLAGS: -lkvm -lprocstat
-//#include <sys/types.h>
-//#include <sys/sysctl.h>
-//#include <sys/time.h>
-//#include <sys/param.h>
-//#include <sys/queue.h>
-//#include <sys/socket.h>
-//#include <sys/user.h>
+// #include <sys/types.h>
+// #include <sys/sysctl.h>
+// #include <sys/time.h>
+// #include <sys/param.h>
+// #include <sys/queue.h>
+// #include <sys/socket.h>
+// #include <sys/user.h>
 //
-//#include <libprocstat.h>
-//#include <string.h>
-//struct kinfo_proc getProcInfoAt(struct kinfo_proc *procs, unsigned int index) {
+// #include <libprocstat.h>
+// #include <string.h>
+// struct kinfo_proc getProcInfoAt(struct kinfo_proc *procs, unsigned int index) {
 //  return procs[index];
-//}
-//unsigned int countArrayItems(char **items) {
+// }
+// unsigned int countArrayItems(char **items) {
 //  unsigned int i = 0;
 //  for (i = 0; items[i] != NULL; ++i);
 //  return i;
-//}
-//char * itemAtIndex(char **items, unsigned int index) {
+// }
+// char * itemAtIndex(char **items, unsigned int index) {
 //  return items[index];
-//}
-//unsigned int countFileStats(struct filestat_list *head) {
+// }
+// unsigned int countFileStats(struct filestat_list *head) {
 //  unsigned int count = 0;
 //  struct filestat *fst;
 //  STAILQ_FOREACH(fst, head, next) {
@@ -50,8 +49,8 @@ package freebsd
 //  }
 //
 //  return count;
-//}
-//void copyFileStats(struct filestat_list *head, struct filestat *out, unsigned int size) {
+// }
+// void copyFileStats(struct filestat_list *head, struct filestat *out, unsigned int size) {
 //  unsigned int index = 0;
 //  struct filestat *fst;
 //  STAILQ_FOREACH(fst, head, next) {
@@ -62,15 +61,18 @@ package freebsd
 //    ++out;
 //    --size;
 //  }
-//}
+// }
 //
 import "C"
 
 import (
-	"os"
+	"fmt"
+	"golang.org/x/sys/unix"
 	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/jetrmm/go-sysinfo/types"
@@ -328,10 +330,10 @@ func (p *process) PID() int {
 }
 
 func (p *process) OpenHandles() ([]string, error) {
-	procstat := C.procstat_open_sysctl()
+	procstat, err := C.procstat_open_sysctl()
 
 	if procstat == nil {
-		return nil, errors.New("failed to open procstat sysctl")
+		return nil, fmt.Errorf("failed to open procstat sysctl: %w", err)
 	}
 	defer C.procstat_close(procstat)
 
@@ -351,10 +353,10 @@ func (p *process) OpenHandles() ([]string, error) {
 }
 
 func (p *process) OpenHandleCount() (int, error) {
-	procstat := C.procstat_open_sysctl()
+	procstat, err := C.procstat_open_sysctl()
 
 	if procstat == nil {
-		return 0, errors.New("failed to open procstat sysctl")
+		return 0, fmt.Errorf("failed to open procstat sysctl%w", err)
 	}
 	defer C.procstat_close(procstat)
 
@@ -396,15 +398,14 @@ const (
 )
 
 func Cptime() (map[string]uint64, error) {
-	var clock clockInfo
-
-	if err := sysctlByName(kernClockrateMIB, &clock); err != nil {
-		return make(map[string]uint64), errors.Wrap(err, "failed to get kern.clockrate")
+	clock, err := unix.SysctlClockinfo(kernClockrateMIB)
+	if err != nil {
+		return make(map[string]uint64), fmt.Errorf("failed to get kern.clockrate: %w", err)
 	}
 
 	cptime, err := syscall.Sysctl(kernCptimeMIB)
 	if err != nil {
-		return make(map[string]uint64), errors.Wrap(err, "failed to get kern.cp_time")
+		return make(map[string]uint64), fmt.Errorf("failed to get kern.cp_time: %w", err)
 	}
 
 	cpMap := make(map[string]uint64)
@@ -412,10 +413,10 @@ func Cptime() (map[string]uint64, error) {
 	times := strings.Split(cptime, " ")
 	names := [5]string{"User", "Nice", "System", "IRQ", "Idle"}
 
-	for index, time := range times {
-		i, err := strconv.ParseUint(time, 10, 64)
+	for index, itime := range times {
+		i, err := strconv.ParseUint(itime, 10, 64)
 		if err != nil {
-			return cpMap, errors.Wrap(err, "error parsing kern.cp_time")
+			return cpMap, fmt.Errorf("error parsing kern.cp_time: %s", err)
 		}
 
 		cpMap[names[index]] = i * uint64(clock.Tick) * 1000

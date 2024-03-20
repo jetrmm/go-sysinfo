@@ -6,7 +6,6 @@ require (
 	github.com/docker/docker v24.0.7+incompatible
 	github.com/elastic/go-windows v1.0.1
 	github.com/joeshaw/multierror v0.0.0-20140124173710-69b34d4ec901
-	github.com/pkg/errors v0.9.1
 	github.com/prometheus/procfs v0.13.0
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/sys v0.18.0
