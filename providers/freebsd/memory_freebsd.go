@@ -36,13 +36,15 @@ import (
 	"unsafe"
 )
 
-const hwPhysmemMIB = "hw.physmem"
-const hwPagesizeMIB = "hw.pagesize"
-const vmVmtotalMIB = "vm.vmtotal"
-const vmSwapmaxpagesMIB = "vm.swap_maxpages"
-const vfsNumfreebuffersMIB = "vfs.numfreebuffers"
-const devNull = "/dev/null"
-const kvmOpen = "kvm_open"
+const (
+	hwPhysmemMIB         = "hw.physmem"
+	hwPagesizeMIB        = "hw.pagesize"
+	vmVmtotalMIB         = "vm.vmtotal"
+	vmSwapmaxpagesMIB    = "vm.swap_maxpages"
+	vfsNumfreebuffersMIB = "vfs.numfreebuffers"
+	devNull              = "/dev/null"
+	kvmOpen              = "kvm_open"
+)
 
 func PageSize() (uint32, error) {
 	var pageSize uint32
