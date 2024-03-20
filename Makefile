@@ -11,4 +11,4 @@ fmt:
 
 .PHONY: imports
 imports:
-	go run golang.org/x/tools/cmd/goimports@latest -l -local github.com/elastic/go-sysinfo ./
+	go run golang.org/x/tools/cmd/goimports@latest -l -local github.com/jetrmm/go-sysinfo ./
