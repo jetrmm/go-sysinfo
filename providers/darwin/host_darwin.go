@@ -20,6 +20,7 @@
 package darwin
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -139,8 +140,12 @@ func (h *host) Memory() (*types.HostMemoryInfo, error) {
 	return &mem, nil
 }
 
+func (h *host) FQDNWithContext(ctx context.Context) (string, error) {
+	return shared.FQDNWithContext(ctx)
+}
+
 func (h *host) FQDN() (string, error) {
-	return shared.FQDN()
+	return h.FQDNWithContext(context.Background())
 }
 
 func (h *host) LoadAverage() (*types.LoadAverageInfo, error) {
@@ -162,6 +167,7 @@ func newHost() (*host, error) {
 	h := &host{}
 	r := &reader{}
 	r.architecture(h)
+	r.nativeArchitecture(h)
 	r.bootTime(h)
 	r.hostname(h)
 	r.network(h)
@@ -199,6 +205,14 @@ func (r *reader) architecture(h *host) {
 		return
 	}
 	h.info.Architecture = v
+}
+
+func (r *reader) nativeArchitecture(h *host) {
+	v, err := NativeArchitecture()
+	if r.addErr(err) {
+		return
+	}
+	h.info.NativeArchitecture = v
 }
 
 func (r *reader) bootTime(h *host) {

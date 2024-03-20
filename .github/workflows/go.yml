@@ -6,13 +6,16 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: 1.20.x
 
@@ -56,9 +59,9 @@ jobs:
           - {go: 1.18.10, os: ubuntu-22.04}
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         id: setup_go
         with:
           go-version: ${{ matrix.go }}
@@ -75,7 +78,7 @@ jobs:
         run: echo "CGO_ENABLED=0" >> $GITHUB_ENV
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v4
         if: github.event_name == 'pull_request'
         with:
           version: latest
@@ -91,3 +94,35 @@ jobs:
       - name: Test
         if: runner.os == 'Windows'
         run:  .ci/scripts/test.bat
+
+  test-freebsd:
+    runs-on: ubuntu-latest
+    env:
+      # Only GITHUB_* are passed into the VM.
+      GITHUB_GOLANG_VERSION: 1.22.1
+    name: test (1.22.1, freebsd-14.0, cgo)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test
+        # TODO: Skip until freebsd provider is merged. Then this 'if' should be removed.
+        if: ${{ hashFiles('providers/freebsd/') != '' }}
+        id: test
+        uses: vmactions/freebsd-vm@35a5b20a98476a681c7576a344775be7e7f77f06  #v1.0.6
+        with:
+          usesh: true
+          prepare: |
+            freebsd-version
+            pwd
+            ls -lah
+            whoami
+
+            pkg install -y curl
+            curl -sL -o /usr/bin/gvm https://github.com/andrewkroh/gvm/releases/download/v0.5.2/gvm-freebsd-amd64
+            chmod +x /usr/bin/gvm
+            eval "$(gvm ${GITHUB_GOLANG_VERSION})"
+            go version
+
+          run: |
+            eval "$(gvm ${GITHUB_GOLANG_VERSION})"
+            go test -v ./...

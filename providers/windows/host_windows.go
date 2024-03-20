@@ -18,6 +18,7 @@
 package windows
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -84,7 +85,7 @@ func (h *host) Memory() (*types.HostMemoryInfo, error) {
 	}, nil
 }
 
-func (h *host) FQDN() (string, error) {
+func (h *host) FQDNWithContext(_ context.Context) (string, error) {
 	fqdn, err := getComputerNameEx(stdwindows.ComputerNamePhysicalDnsFullyQualified)
 	if err != nil {
 		return "", fmt.Errorf("could not get windows FQDN: %s", err)
@@ -93,10 +94,15 @@ func (h *host) FQDN() (string, error) {
 	return strings.ToLower(strings.TrimSuffix(fqdn, ".")), nil
 }
 
+func (h *host) FQDN() (string, error) {
+	return h.FQDNWithContext(context.Background())
+}
+
 func newHost() (*host, error) {
 	h := &host{}
 	r := &reader{}
 	r.architecture(h)
+	r.nativeArchitecture(h)
 	r.bootTime(h)
 	r.hostname(h)
 	r.network(h)
@@ -134,6 +140,14 @@ func (r *reader) architecture(h *host) {
 		return
 	}
 	h.info.Architecture = v
+}
+
+func (r *reader) nativeArchitecture(h *host) {
+	v, err := NativeArchitecture()
+	if r.addErr(err) {
+		return
+	}
+	h.info.NativeArchitecture = v
 }
 
 func (r *reader) bootTime(h *host) {
