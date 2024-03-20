@@ -23,6 +23,7 @@ package freebsd
 import "C"
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -81,8 +82,12 @@ func (h *host) Memory() (*types.HostMemoryInfo, error) {
 	return m, r.Err()
 }
 
+func (h *host) FQDNWithContext(ctx context.Context) (string, error) {
+	return shared.FQDNWithContext(ctx)
+}
+
 func (h *host) FQDN() (string, error) {
-	return shared.FQDN()
+	return h.FQDNWithContext(context.Background())
 }
 
 func (h *host) LoadAverage() (*types.LoadAverageInfo, error) {
