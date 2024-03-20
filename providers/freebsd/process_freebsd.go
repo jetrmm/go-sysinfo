@@ -127,7 +127,7 @@ func makeMap(from []string) map[string]string {
 	out := make(map[string]string, len(from))
 
 	for _, env := range from {
-		parts := strings.Split(env, "=")
+		parts := strings.SplitN(env, "=", 2)
 		if len(parts) > 1 {
 			out[parts[0]] = parts[1]
 		}
