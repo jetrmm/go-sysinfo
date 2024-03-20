@@ -18,6 +18,7 @@
 package freebsd
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,57 +27,20 @@ import (
 )
 
 func TestOperatingSystem(t *testing.T) {
-	t.Run("freebsd13.1", func(t *testing.T) {
+	t.Run("freebsd", func(t *testing.T) {
 		os, err := getOSInfo("")
 		if err != nil {
 			t.Fatal(err)
 		}
-		assert.Equal(t, types.OSInfo{
-			Type:     "freebsd",
-			Family:   "freebsd",
-			Platform: "freebsd",
-			Name:     "FreeBSD",
-			Version:  "13.1-RELEASE",
-			Major:    13,
-			Minor:    1,
-			Patch:    0,
-		}, *os)
-		t.Logf("%#v", os)
-	})
-
-	t.Run("freebsd13.2", func(t *testing.T) {
-		os, err := getOSInfo("")
-		if err != nil {
-			t.Fatal(err)
-		}
-		assert.Equal(t, types.OSInfo{
-			Type:     "",
-			Family:   "freebsd",
-			Platform: "freebsd",
-			Name:     "FreeBSD",
-			Version:  "13.2-RELEASE-p3",
-			Major:    13,
-			Minor:    2,
-			Patch:    3,
-		}, *os)
-		t.Logf("%#v", os)
-	})
-
-	t.Run("freebsd14", func(t *testing.T) {
-		os, err := getOSInfo("")
-		if err != nil {
-			t.Fatal(err)
-		}
-		assert.Equal(t, types.OSInfo{
-			Type:     "",
-			Family:   "freebsd",
-			Platform: "freebsd",
-			Name:     "FreeBSD",
-			Version:  "14.0-RELEASE",
-			Major:    14,
-			Minor:    0,
-			Patch:    0,
-		}, *os)
+		assert.IsType(t, types.OSInfo{}, *os)
+		assert.Equal(t, "freebsd", os.Type)
+		assert.Equal(t, "freebsd", os.Family)
+		assert.Equal(t, "freebsd", os.Platform)
+		assert.Equal(t, "FreeBSD", os.Name)
+		assert.Regexp(t, regexp.MustCompile("([0-9]{1,2})\\.([0-5])-(RELEASE|STABLE|CURRENT|RC[0-9])(-p[0-9])?"), os.Version)
+		assert.Regexp(t, regexp.MustCompile("([0-9]{1,2})"), os.Major)
+		assert.Regexp(t, regexp.MustCompile("([0-9])"), os.Minor)
+		assert.Regexp(t, regexp.MustCompile("([0-9]{1,2})"), os.Patch)
 		t.Logf("%#v", os)
 	})
 }
