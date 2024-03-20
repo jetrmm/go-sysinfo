@@ -15,12 +15,13 @@
 // specific language governing permissions and limitations
 // under the License.
 
+//go:build freebsd && cgo
 // +build freebsd,cgo
 
 package freebsd
 
-//#include <sys/sysctl.h>
-//#include <stdlib.h>
+// #include <sys/sysctl.h>
+// #include <stdlib.h>
 import "C"
 
 import (
