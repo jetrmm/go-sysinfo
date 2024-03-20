@@ -7,10 +7,10 @@ require (
 	github.com/elastic/go-windows v1.0.1
 	github.com/joeshaw/multierror v0.0.0-20140124173710-69b34d4ec901
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/procfs v0.12.0
-	github.com/stretchr/testify v1.7.0
-	golang.org/x/sys v0.13.0
-	howett.net/plist v1.0.0
+	github.com/prometheus/procfs v0.13.0
+	github.com/stretchr/testify v1.9.0
+	golang.org/x/sys v0.18.0
+	howett.net/plist v1.0.1
 )
 
 require (
@@ -29,6 +29,6 @@ require (
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.1.12 // indirect
-	gopkg.in/yaml.v3 v3.0.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.4.0 // indirect
 )
