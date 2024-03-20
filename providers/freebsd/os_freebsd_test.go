@@ -32,7 +32,7 @@ func TestOperatingSystem(t *testing.T) {
 			t.Fatal(err)
 		}
 		assert.Equal(t, types.OSInfo{
-			Type:     "",
+			Type:     "freebsd",
 			Family:   "freebsd",
 			Platform: "freebsd",
 			Name:     "FreeBSD",

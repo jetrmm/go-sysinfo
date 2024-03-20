@@ -15,31 +15,34 @@
 // specific language governing permissions and limitations
 // under the License.
 
+//go:build freebsd && cgo
+// +build freebsd,cgo
+
 package freebsd
 
 // #cgo LDFLAGS: -lkvm -lprocstat
-// #include <sys/types.h>
-// #include <sys/sysctl.h>
-// #include <sys/time.h>
-// #include <sys/param.h>
-// #include <sys/queue.h>
-// #include <sys/socket.h>
-// #include <sys/user.h>
+//#include <sys/types.h>
+//#include <sys/sysctl.h>
+//#include <sys/time.h>
+//#include <sys/param.h>
+//#include <sys/queue.h>
+//#include <sys/socket.h>
+//#include <sys/user.h>
 //
-// #include <libprocstat.h>
-// #include <string.h>
-// struct kinfo_proc getProcInfoAt(struct kinfo_proc *procs, unsigned int index) {
+//#include <libprocstat.h>
+//#include <string.h>
+//struct kinfo_proc getProcInfoAt(struct kinfo_proc *procs, unsigned int index) {
 //  return procs[index];
-// }
-// unsigned int countArrayItems(char **items) {
+//}
+//unsigned int countArrayItems(char **items) {
 //  unsigned int i = 0;
 //  for (i = 0; items[i] != NULL; ++i);
 //  return i;
-// }
-// char * itemAtIndex(char **items, unsigned int index) {
+//}
+//char * itemAtIndex(char **items, unsigned int index) {
 //  return items[index];
-// }
-// unsigned int countFileStats(struct filestat_list *head) {
+//}
+//unsigned int countFileStats(struct filestat_list *head) {
 //  unsigned int count = 0;
 //  struct filestat *fst;
 //  STAILQ_FOREACH(fst, head, next) {
@@ -47,8 +50,8 @@ package freebsd
 //  }
 //
 //  return count;
-// }
-// void copyFileStats(struct filestat_list *head, struct filestat *out, unsigned int size) {
+//}
+//void copyFileStats(struct filestat_list *head, struct filestat *out, unsigned int size) {
 //  unsigned int index = 0;
 //  struct filestat *fst;
 //  STAILQ_FOREACH(fst, head, next) {
@@ -59,19 +62,16 @@ package freebsd
 //    ++out;
 //    --size;
 //  }
-// }
+//}
 //
 import "C"
 
 import (
-	"io/ioutil"
 	"os"
+	"io/ioutil"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/jetrmm/go-sysinfo/types"
 )
@@ -80,14 +80,14 @@ func getProcInfo(op int, arg int) ([]process, error) {
 	procstat, err := C.procstat_open_sysctl()
 
 	if procstat == nil {
-		return nil, errors.Wrap(err, "failed to open procstat sysctl")
+		return nil, fmt.Errorf("failed to open procstat sysctl: %w", err)
 	}
 	defer C.procstat_close(procstat)
 
 	var count C.uint = 0
 	kprocs, err := C.procstat_getprocs(procstat, C.int(op), C.int(arg), &count)
 	if kprocs == nil {
-		return nil, errors.Wrap(err, "getprocs failed")
+		return nil, fmt.Errorf("getprocs failed: %w", err)
 	}
 	defer C.procstat_freeprocs(procstat, kprocs)
 
@@ -138,7 +138,7 @@ func getProcEnv(p *process) (map[string]string, error) {
 	procstat, err := C.procstat_open_sysctl()
 
 	if procstat == nil {
-		return nil, errors.Wrap(err, "failed to open procstat sysctl")
+		return nil, fmt.Errorf("failed to open procstat sysctl: %w", err)
 	}
 	defer C.procstat_close(procstat)
 
@@ -152,7 +152,7 @@ func getProcArgs(p *process) ([]string, error) {
 	procstat, err := C.procstat_open_sysctl()
 
 	if procstat == nil {
-		return nil, errors.Wrap(err, "failed to open procstat sysctl")
+		return nil, fmt.Errorf("failed to open procstat sysctl: %w", err)
 	}
 	defer C.procstat_close(procstat)
 
@@ -166,7 +166,7 @@ func getProcPathname(p *process) (string, error) {
 	procstat, err := C.procstat_open_sysctl()
 
 	if procstat == nil {
-		return "", errors.Wrap(err, "failed to open procstat sysctl")
+		return "", fmt.Errorf("failed to open procstat sysctl: %w", err)
 	}
 	defer C.procstat_close(procstat)
 
@@ -195,13 +195,13 @@ func getProcCWD(p *process) (string, error) {
 	procstat, err := C.procstat_open_sysctl()
 
 	if procstat == nil {
-		return "", errors.Wrap(err, "failed to open procstat sysctl")
+		return "", fmt.Errorf("failed to open procstat sysctl: %w", err)
 	}
 	defer C.procstat_close(procstat)
 
 	fs, err := C.procstat_getfiles(procstat, &p.kinfo, 0)
 	if fs == nil {
-		return "", errors.Wrap(err, "failed to get files")
+		return "", fmt.Errorf("failed to get files: %w", err)
 	}
 
 	defer C.procstat_freefiles(procstat, fs)

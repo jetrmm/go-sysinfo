@@ -17,20 +17,20 @@
 
 package freebsd
 
-// #cgo LDFLAGS: -lkvm
-// #include <kvm.h>
-// #include <sys/vmmeter.h>
-import "C"
-
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
 	"time"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/joeshaw/multierror"
-	"github.com/pkg/errors"
 	"github.com/prometheus/procfs"
 
 	"github.com/jetrmm/go-sysinfo/internal/registry"
@@ -125,7 +125,7 @@ type reader struct {
 
 func (r *reader) addErr(err error) bool {
 	if err != nil {
-		if errors.Cause(err) != types.ErrNotImplemented {
+		if errors.Is(err, types.ErrNotImplemented) {
 			r.errs = append(r.errs, err)
 		}
 		return true
@@ -161,19 +161,17 @@ func (r *reader) memInfo(m *types.HostMemoryInfo) {
 		return
 	}
 
-	totalMemory, err := TotalMemory()
+	m.Total, err = TotalMemory()
 	if r.addErr(err) {
 		return
 	}
 
-	m.Total = totalMemory
-
-	vm, err := VmTotal()
+	free, err := FreeMemory()
 	if r.addErr(err) {
 		return
 	}
 
-	m.Free = uint64(vm.Free) * uint64(pageSize)
+	m.Free = uint64(free) * uint64(pageSize)
 	m.Used = m.Total - m.Free
 
 	numFreeBuffers, err := NumFreeBuffers()
@@ -183,23 +181,24 @@ func (r *reader) memInfo(m *types.HostMemoryInfo) {
 
 	m.Available = m.Free + (uint64(numFreeBuffers) * uint64(pageSize))
 
-	swap, err := KvmGetSwapInfo()
-	if r.addErr(err) {
-		return
-	}
-
 	swapMaxPages, err := SwapMaxPages()
 	if r.addErr(err) {
 		return
 	}
 
-	if swap.Total > swapMaxPages {
-		swap.Total = swapMaxPages
+	swapTotal, err := SwapTotal()
+	if r.addErr(err) {
+		return
 	}
 
-	m.VirtualTotal = uint64(swap.Total) * uint64(pageSize)
-	m.VirtualUsed = uint64(swap.Used) * uint64(pageSize)
-	m.VirtualFree = m.VirtualTotal - m.VirtualUsed
+	if swapTotal > swapMaxPages {
+		swapTotal = swapMaxPages
+	}
+
+	m.VirtualTotal = uint64(swapTotal) * uint64(pageSize)
+	// TODO: FIXME: Where to get swap used?
+	//m.VirtualUsed = uint64(swap.Used) * uint64(pageSize)
+	//m.VirtualFree = m.VirtualTotal - m.VirtualUsed
 }
 
 func (r *reader) architecture(h *host) {
