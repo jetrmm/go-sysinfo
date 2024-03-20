@@ -15,18 +15,19 @@
 // specific language governing permissions and limitations
 // under the License.
 
+//go:build freebsd && cgo
 // +build freebsd,cgo
 
 package freebsd
 
 // #cgo LDFLAGS: -lkvm
-//#include <sys/cdefs.h>
-//#include <sys/types.h>
-//#include <sys/sysctl.h>
+// #include <sys/cdefs.h>
+// #include <sys/types.h>
+// #include <sys/sysctl.h>
 
-//#include <paths.h>
-//#include <kvm.h>
-//#include <stdlib.h>
+// #include <paths.h>
+// #include <kvm.h>
+// #include <stdlib.h>
 import "C"
 
 import (
@@ -54,7 +55,7 @@ func PageSize() (uint32, error) {
 
 func SwapMaxPages() (uint32, error) {
 	var maxPages uint32
-	if err := sysctlByName(hwPhysmemMIB, &maxPages); err != nil {
+	if err := sysctlByName(vmSwapmaxpagesMIB, &maxPages); err != nil {
 		return 0, errors.Wrap(err, "failed to get vm.swap_maxpages")
 	}
 
