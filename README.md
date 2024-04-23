@@ -1,19 +1,5 @@
 # go-sysinfo
 
-## Fork information
-
-I have forked this repository because I need FreeBSD support in my project.
-
-There is this very nice ready-to-go MR [here](https://github.com/elastic/go-sysinfo/pull/126), however that
-is not being merged for legal reasons. I merged the code in this fork in the branch `add-freebsd` and
-tagged it as `v1.11.20`.
-
-### Usage
-
-`go get github.com/vansante/go-sysinfo`
-
-## Original readme
-
 [![go](https://github.com/elastic/go-sysinfo/actions/workflows/go.yml/badge.svg)](https://github.com/elastic/go-sysinfo/actions/workflows/go.yml)
 [![Go Documentation](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)][godocs]
 
