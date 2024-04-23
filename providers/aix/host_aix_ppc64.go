@@ -37,8 +37,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/joeshaw/multierror"
-
 	"github.com/jetrmm/go-sysinfo/internal/registry"
 	"github.com/jetrmm/go-sysinfo/providers/shared"
 	"github.com/jetrmm/go-sysinfo/types"
@@ -167,7 +165,7 @@ func (r *reader) addErr(err error) bool {
 
 func (r *reader) Err() error {
 	if len(r.errs) > 0 {
-		return &multierror.MultiError{Errors: r.errs}
+		return errors.Join(r.errs...)
 	}
 	return nil
 }
