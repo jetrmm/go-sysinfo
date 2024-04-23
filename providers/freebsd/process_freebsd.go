@@ -68,7 +68,6 @@ import "C"
 import (
 	"fmt"
 	"golang.org/x/sys/unix"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -304,7 +303,7 @@ func (p *process) User() (types.UserInfo, error) {
 
 // NetworkCounters reports network stats for an individual PID.
 func (p *process) NetworkCounters() (*types.NetworkCountersInfo, error) {
-	snmpRaw, err := ioutil.ReadFile(p.path("net/snmp"))
+	snmpRaw, err := os.ReadFile(p.path("net/snmp"))
 	if err != nil {
 		return nil, err
 	}
@@ -313,7 +312,7 @@ func (p *process) NetworkCounters() (*types.NetworkCountersInfo, error) {
 		return nil, err
 	}
 
-	netstatRaw, err := ioutil.ReadFile(p.path("net/netstat"))
+	netstatRaw, err := os.ReadFile(p.path("net/netstat"))
 	if err != nil {
 		return nil, err
 	}
@@ -404,6 +403,7 @@ func Cptime() (map[string]uint64, error) {
 	}
 
 	cptime, err := syscall.Sysctl(kernCptimeMIB)
+	// cptime, err := unix.Sysctl(kernCptimeMIB)
 	if err != nil {
 		return make(map[string]uint64), fmt.Errorf("failed to get kern.cp_time: %w", err)
 	}
