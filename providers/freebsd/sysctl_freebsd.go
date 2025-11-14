@@ -53,7 +53,7 @@ var pageSizeBytes = sync.OnceValues(func() (uint64, error) {
 	return uint64(v), nil
 })
 
-func activePageCount(r *reader) uint64 {
+func (r *reader) activePageCount() uint64 {
 	const mib = "vm.stats.vm.v_active_count"
 
 	v, err := unix.SysctlUint32(mib)
@@ -87,7 +87,7 @@ func bootTime() (time.Time, error) {
 }
 
 // buffersUsedBytes returns the number memory bytes used as disk cache.
-func buffersUsedBytes(r *reader) uint64 {
+func (r *reader) buffersUsedBytes() uint64 {
 	const mib = "vfs.bufspace"
 
 	v, err := unix.SysctlUint64(mib)
@@ -98,7 +98,7 @@ func buffersUsedBytes(r *reader) uint64 {
 	return v
 }
 
-func cachePageCount(r *reader) uint64 {
+func (r *reader) cachePageCount() uint64 {
 	const mib = "vm.stats.vm.v_cache_count"
 
 	v, err := unix.SysctlUint32(mib)
@@ -143,7 +143,7 @@ func cpuStateTimes() (*types.CPUTimes, error) {
 	}, nil
 }
 
-func freePageCount(r *reader) uint64 {
+func (r *reader) freePageCount() uint64 {
 	const mib = "vm.stats.vm.v_free_count"
 
 	v, err := unix.SysctlUint32(mib)
@@ -154,7 +154,7 @@ func freePageCount(r *reader) uint64 {
 	return uint64(v)
 }
 
-func inactivePageCount(r *reader) uint64 {
+func (r *reader) inactivePageCount() uint64 {
 	const mib = "vm.stats.vm.v_inactive_count"
 
 	v, err := unix.SysctlUint32(mib)
@@ -227,7 +227,7 @@ func operatingSystem() (*types.OSInfo, error) {
 	return info, nil
 }
 
-func totalPhysicalMem(r *reader) uint64 {
+func (r *reader) totalPhysicalMem() uint64 {
 	const mib = "hw.physmem"
 
 	v, err := unix.SysctlUint64(mib)
@@ -237,7 +237,7 @@ func totalPhysicalMem(r *reader) uint64 {
 	return v
 }
 
-func wirePageCount(r *reader) uint64 {
+func (r *reader) wirePageCount() uint64 {
 	const mib = "vm.stats.vm.v_wire_count"
 
 	v, err := unix.SysctlUint32(mib)
