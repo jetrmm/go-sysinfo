@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//go:build freebsd && cgo
+//go:build freebsd
 
 package freebsd
 
@@ -130,25 +130,25 @@ func (r *reader) memInfo(m *types.HostMemoryInfo) {
 		return
 	}
 
-	m.Total = totalPhysicalMem(r)
-	activePages := activePageCount(r)
+	m.Total = r.totalPhysicalMem()
+	activePages := r.activePageCount()
 
 	m.Metrics = make(map[string]uint64, 6)
 	m.Metrics["active_bytes"] = activePages * pageSize
 
-	wirePages := wirePageCount(r)
+	wirePages := r.wirePageCount()
 	m.Metrics["wired_bytes"] = wirePages * pageSize
 
-	inactivePages := inactivePageCount(r)
+	inactivePages := r.inactivePageCount()
 	m.Metrics["inactive_bytes"] = inactivePages * pageSize
 
-	cachePages := cachePageCount(r)
+	cachePages := r.cachePageCount()
 	m.Metrics["cache_bytes"] = cachePages * pageSize
 
-	freePages := freePageCount(r)
+	freePages := r.freePageCount()
 	m.Metrics["free_bytes"] = freePages * pageSize
 
-	buffers := buffersUsedBytes(r)
+	buffers := r.buffersUsedBytes()
 	m.Metrics["buffer_bytes"] = buffers
 
 	m.Used = (activePages + wirePages) * pageSize
