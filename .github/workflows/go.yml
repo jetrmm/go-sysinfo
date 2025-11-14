@@ -114,9 +114,9 @@ jobs:
 
       - name: Test
         # TODO: Skip until freebsd provider is merged. Then this 'if' should be removed.
-        if: ${{ hashFiles('providers/freebsd/') != '' }}
+        # if: ${{ hashFiles('providers/freebsd/') != '' }}
         id: test
-        uses: vmactions/freebsd-vm@783ae15c0393f8a2582a139f76cc55f2d887b4a6  #v1.2.6
+        uses: vmactions/freebsd-vm@783ae15c0393f8a2582a139f76cc55f2d887b4a6 #v1.2.6
         with:
           usesh: true
           prepare: |
@@ -126,7 +126,7 @@ jobs:
             whoami
 
             pkg install -y curl
-            curl -sL -o /usr/bin/gvm https://github.com/andrewkroh/gvm/releases/download/v0.5.2/gvm-freebsd-amd64
+            curl -sL -o /usr/bin/gvm https://github.com/andrewkroh/gvm/releases/download/v0.6.0/gvm-freebsd-amd64
             chmod +x /usr/bin/gvm
             eval "$(gvm ${GITHUB_GOLANG_VERSION})"
             go version
