@@ -27,6 +27,18 @@ import (
 	"strings"
 )
 
+// defaultResolver is the default resolver used by FQDNWithContext.
+// It can be replaced with a custom defaultResolver for testing purposes.
+var defaultResolver resolver = net.DefaultResolver
+
+// resolver is an interface that abstracts the DNS/IP resolution methods used
+// in FQDNWithContext. This allows for easier testing and mocking of DNS lookups.
+type resolver interface {
+	LookupCNAME(ctx context.Context, host string) (string, error)
+	LookupIP(ctx context.Context, network, host string) ([]net.IP, error)
+	LookupAddr(ctx context.Context, addr string) ([]string, error)
+}
+
 // FQDNWithContext attempts to lookup the host's fully-qualified domain name and returns it.
 // It does so using the following algorithm:
 //
@@ -51,32 +63,51 @@ func FQDNWithContext(ctx context.Context) (string, error) {
 }
 
 // FQDN just calls FQDNWithContext with a background context.
+// Deprecated.
 func FQDN() (string, error) {
 	return FQDNWithContext(context.Background())
 }
 
 func fqdn(ctx context.Context, hostname string) (string, error) {
 	var errs error
-	cname, err := net.DefaultResolver.LookupCNAME(ctx, hostname)
+	cname, err := defaultResolver.LookupCNAME(ctx, hostname)
 	if err != nil {
 		errs = fmt.Errorf("could not get FQDN, all methods failed: failed looking up CNAME: %w",
 			err)
 	}
+
 	if cname != "" {
-		return strings.ToLower(strings.TrimSuffix(cname, ".")), nil
+		cname = strings.TrimSuffix(cname, ".")
+
+		// Go might lowercase the cname "for convenience". Therefore, if cname
+		// is the same as hostname, return hostname as is.
+		// See https://github.com/golang/go/blob/go1.22.5/src/net/hosts.go#L38
+		if strings.ToLower(cname) == strings.ToLower(hostname) {
+			return hostname, nil
+		}
+
+		return cname, nil
 	}
 
-	ips, err := net.DefaultResolver.LookupIP(ctx, "ip", hostname)
+	ips, err := defaultResolver.LookupIP(ctx, "ip", hostname)
 	if err != nil {
 		errs = fmt.Errorf("%s: failed looking up IP: %w", errs, err)
 	}
 
 	for _, ip := range ips {
-		names, err := net.DefaultResolver.LookupAddr(ctx, ip.String())
+		// do not resolve to localhost
+		if ip.IsLoopback() {
+			continue
+		}
+		names, err := defaultResolver.LookupAddr(ctx, ip.String())
 		if err != nil || len(names) == 0 {
 			continue
 		}
-		return strings.ToLower(strings.TrimSuffix(names[0], ".")), nil
+		return strings.TrimSuffix(names[0], "."), nil
+	}
+
+	if errs == nil {
+		return hostname, nil
 	}
 
 	return "", errs

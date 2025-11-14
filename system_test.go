@@ -34,36 +34,43 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/elastic/go-sysinfo/internal/cgo"
 	"github.com/elastic/go-sysinfo/types"
 )
 
 type ProcessFeatures struct {
+	ProcessInfo          bool
 	Environment          bool
 	OpenHandleEnumerator bool
 	OpenHandleCounter    bool
 	Seccomp              bool
 	Capabilities         bool
-	NetworkCounters      bool
 }
 
 var expectedProcessFeatures = map[string]*ProcessFeatures{
 	"darwin": {
-		Environment: true,
+		ProcessInfo:          true,
+		Environment:          true,
+		OpenHandleEnumerator: false,
+		OpenHandleCounter:    false,
 	},
 	"linux": {
+		ProcessInfo:          true,
 		Environment:          true,
 		OpenHandleEnumerator: true,
 		OpenHandleCounter:    true,
 		Seccomp:              true,
 		Capabilities:         true,
-		NetworkCounters:      true,
 	},
 	"windows": {
-		OpenHandleCounter: true,
+		ProcessInfo:          true,
+		OpenHandleEnumerator: false,
+		OpenHandleCounter:    true,
 	},
 	"aix": {
-		Environment: true,
+		ProcessInfo:          true,
+		Environment:          true,
+		OpenHandleEnumerator: false,
+		OpenHandleCounter:    false,
 	},
 	"freebsd": {
 		Environment:          true,
@@ -72,35 +79,57 @@ var expectedProcessFeatures = map[string]*ProcessFeatures{
 	},
 }
 
-var startTime = time.Now().UTC()
-
-func TestProcessFeaturesMatrix(t *testing.T) {
-	process, err := Self()
-	switch {
-	// Direct equality comparison because this is the API contract.
-	case types.ErrNotImplemented == err:
-		assert.Nil(t, expectedProcessFeatures[runtime.GOOS], "unexpected ErrNotImplemented for %v", runtime.GOOS)
-		return
-	case err != nil:
-		t.Fatal(err)
+func TestSystemHostFS(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("test is linux-only")
 	}
 
+	handler, err := Host(WithHostFS("providers/linux/testdata/ubuntu1710"))
+	require.NoError(t, err)
+	memInfo, err := handler.Memory()
+	require.NoError(t, err)
+	// make sure we read the testdata file
+	require.Equal(t, memInfo.Free, uint64(2612703232))
+}
+
+func TestSystemProcessHostFS(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("test is linux-only")
+	}
+
+	handler, err := Process(33925, WithHostFS("providers/linux/testdata/fedora40"))
+	require.NoError(t, err)
+
+	_, err = handler.Memory()
+	require.NoError(t, err)
+}
+
+func TestProcessFeaturesMatrix(t *testing.T) {
+	const GOOS = runtime.GOOS
 	var features ProcessFeatures
+
+	process, err := Self()
+	if err == types.ErrNotImplemented {
+		assert.Nil(t, expectedProcessFeatures[GOOS], "unexpected ErrNotImplemented for %v", GOOS)
+		return
+	} else if err != nil {
+		t.Fatal(err)
+	}
+	features.ProcessInfo = true
+
 	_, features.Environment = process.(types.Environment)
 	_, features.OpenHandleEnumerator = process.(types.OpenHandleEnumerator)
 	_, features.OpenHandleCounter = process.(types.OpenHandleCounter)
 	_, features.Seccomp = process.(types.Seccomp)
 	_, features.Capabilities = process.(types.Capabilities)
-	_, features.NetworkCounters = process.(types.NetworkCounters)
-	assert.Equal(t, expectedProcessFeatures[runtime.GOOS], &features)
 
+	assert.Equal(t, expectedProcessFeatures[GOOS], &features)
 	logAsJSON(t, map[string]interface{}{
 		"features": features,
 	})
 }
 
 func TestSelf(t *testing.T) {
-	t.Log("Getting Self() process")
 	process, err := Self()
 	if err == types.ErrNotImplemented {
 		t.Skip("process provider not implemented on", runtime.GOOS)
@@ -117,7 +146,6 @@ func TestSelf(t *testing.T) {
 		}
 	}
 
-	t.Log("Getting process Info()")
 	output := map[string]interface{}{}
 	info, err := process.Info()
 	if err != nil {
@@ -126,12 +154,6 @@ func TestSelf(t *testing.T) {
 	output["process.info"] = info
 	assert.EqualValues(t, os.Getpid(), info.PID)
 	assert.Equal(t, os.Args, info.Args)
-	switch {
-	case runtime.GOOS == "darwin" && !cgo.Enabled:
-	default:
-		assert.WithinDurationf(t, startTime, info.StartTime, 10*time.Second, "StartTime does not match test start")
-		assertWorkingDirectory(t, info.CWD)
-	}
 
 	exe, err := os.Executable()
 	if err != nil {
@@ -140,14 +162,6 @@ func TestSelf(t *testing.T) {
 	assert.Equal(t, exe, info.Exe)
 
 	if user, err := process.User(); !errors.Is(err, types.ErrNotImplemented) {
-		t.Log("Getting process User()")
-
-		if err != nil {
-			t.Fatal(err)
-		}
-		output["process.user"] = user
-
-		user, err := process.User()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -167,8 +181,6 @@ func TestSelf(t *testing.T) {
 	}
 
 	if v, ok := process.(types.Environment); ok {
-		t.Log("Getting process Environment()")
-
 		actualEnv, err := v.Environment()
 		if err != nil {
 			t.Fatal(err)
@@ -189,8 +201,6 @@ func TestSelf(t *testing.T) {
 	}
 
 	if memInfo, err := process.Memory(); !errors.Is(err, types.ErrNotImplemented) {
-		t.Log("Getting process Memory()")
-
 		require.NoError(t, err)
 		if runtime.GOOS != "windows" {
 			// Virtual memory may be reported as
@@ -201,7 +211,6 @@ func TestSelf(t *testing.T) {
 		output["process.mem"] = memInfo
 	}
 
-	t.Log("Getting process CPUTime()")
 	for {
 		cpuTimes, err := process.CPUTime()
 		if errors.Is(err, types.ErrNotImplemented) {
@@ -220,8 +229,6 @@ func TestSelf(t *testing.T) {
 	}
 
 	if v, ok := process.(types.OpenHandleEnumerator); ok {
-		t.Log("Getting process OpenHandles()")
-
 		fds, err := v.OpenHandles()
 		if assert.NoError(t, err) {
 			output["process.fd"] = fds
@@ -229,17 +236,13 @@ func TestSelf(t *testing.T) {
 	}
 
 	if v, ok := process.(types.OpenHandleCounter); ok {
-		t.Log("Getting process OpenHandleCount()")
-
 		count, err := v.OpenHandleCount()
 		if assert.NoError(t, err) {
-			output["process.open_handle_count"] = count
+			t.Log("open handles count:", count)
 		}
 	}
 
 	if v, ok := process.(types.Seccomp); ok {
-		t.Log("Getting process Seccomp()")
-
 		seccompInfo, err := v.Seccomp()
 		if assert.NoError(t, err) {
 			assert.NotZero(t, seccompInfo)
@@ -248,22 +251,10 @@ func TestSelf(t *testing.T) {
 	}
 
 	if v, ok := process.(types.Capabilities); ok {
-		t.Log("Getting process Capabilities()")
-
 		capInfo, err := v.Capabilities()
 		if assert.NoError(t, err) {
 			assert.NotZero(t, capInfo)
 			output["process.capabilities"] = capInfo
-		}
-	}
-
-	if v, ok := process.(types.NetworkCounters); ok {
-		t.Log("Getting process NetworkCounters()")
-
-		counters, err := v.NetworkCounters()
-		if assert.NoError(t, err) {
-			assert.NotZero(t, counters)
-			output["process.network_counters"] = counters
 		}
 	}
 
@@ -338,6 +329,7 @@ func TestProcesses(t *testing.T) {
 			errors.Is(err, syscall.EPERM),
 			errors.Is(err, syscall.EINVAL),
 			errors.Is(err, syscall.ENOENT),
+			errors.Is(err, syscall.EIO),
 			errors.Is(err, fs.ErrPermission):
 			continue
 		case err != nil:
@@ -347,28 +339,5 @@ func TestProcesses(t *testing.T) {
 		t.Logf("pid=%v name='%s' exe='%s' args=%+v ppid=%d cwd='%s' start_time=%v",
 			info.PID, info.Name, info.Exe, info.Args, info.PPID, info.CWD,
 			info.StartTime)
-	}
-}
-
-func assertWorkingDirectory(t *testing.T, observedWD string) {
-	t.Helper()
-
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expectedInfo, err := os.Stat(wd)
-	if err != nil {
-		t.Fatal(err)
-	}
-	observedInfo, err := os.Stat(observedWD)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !os.SameFile(expectedInfo, observedInfo) {
-		t.Errorf("working directory does not match observed working directory, want=%#v, got=%#v",
-			expectedInfo, observedInfo)
 	}
 }

@@ -46,6 +46,24 @@ func TestOperatingSystem(t *testing.T) {
 		}, *os)
 		t.Logf("%#v", os)
 	})
+	t.Run("almalinux10", func(t *testing.T) {
+		// Data from 'docker pull almalinux:10'.
+		os, err := getOSInfo("testdata/almalinux10")
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, types.OSInfo{
+			Type:     "linux",
+			Family:   "redhat",
+			Platform: "almalinux",
+			Name:     "AlmaLinux",
+			Version:  "10.0 (Purple Lion)",
+			Major:    10,
+			Minor:    0,
+			Codename: "Purple Lion",
+		}, *os)
+		t.Logf("%#v", os)
+	})
 	t.Run("alpine3.17", func(t *testing.T) {
 		// Data from 'docker pull alpine:3.17.3'.
 		os, err := getOSInfo("testdata/alpine3.17")
@@ -54,6 +72,7 @@ func TestOperatingSystem(t *testing.T) {
 		}
 		assert.Equal(t, types.OSInfo{
 			Type:     "linux",
+			Family:   "alpine",
 			Platform: "alpine",
 			Name:     "Alpine Linux",
 			Version:  "3.17.3",
@@ -246,6 +265,24 @@ func TestOperatingSystem(t *testing.T) {
 		}, *os)
 		t.Logf("%#v", os)
 	})
+	t.Run("redhat10", func(t *testing.T) {
+		// Data from 'docker pull redhat/ubi10:10.0'.
+		os, err := getOSInfo("testdata/redhat10")
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, types.OSInfo{
+			Type:     "linux",
+			Family:   "redhat",
+			Platform: "rhel",
+			Name:     "Red Hat Enterprise Linux",
+			Version:  "10.0 (Coughlan)",
+			Major:    10,
+			Minor:    0,
+			Codename: "Coughlan",
+		}, *os)
+		t.Logf("%#v", os)
+	})
 	t.Run("rockylinux9", func(t *testing.T) {
 		// Data from 'docker pull rockylinux:9.0'.
 		os, err := getOSInfo("testdata/rockylinux9")
@@ -414,6 +451,38 @@ func TestOperatingSystem(t *testing.T) {
 			Minor:    4,
 			Patch:    1708,
 			Codename: "Core",
+		}, *os)
+		t.Logf("%#v", os)
+	})
+	t.Run("sles15sp5", func(t *testing.T) {
+		os, err := getOSInfo("testdata/sles15sp5")
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, types.OSInfo{
+			Type:     "linux",
+			Family:   "suse",
+			Platform: "sles",
+			Name:     "SLES",
+			Version:  "15-SP5",
+			Major:    15,
+			Minor:    5,
+		}, *os)
+		t.Logf("%#v", os)
+	})
+	t.Run("sled15sp5", func(t *testing.T) {
+		os, err := getOSInfo("testdata/sled15sp5")
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, types.OSInfo{
+			Type:     "linux",
+			Family:   "suse",
+			Platform: "sled",
+			Name:     "SLED",
+			Version:  "15-SP5",
+			Major:    15,
+			Minor:    5,
 		}, *os)
 		t.Logf("%#v", os)
 	})
