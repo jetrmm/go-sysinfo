@@ -100,7 +100,7 @@ jobs:
 
   test-freebsd:
     runs-on: ubuntu-latest
-    name: test (stable, freebsd-14.2, cgo)
+    name: test (stable, freebsd-14.3, cgo)
     steps:
       - uses: actions/checkout@v5
 
@@ -112,6 +112,9 @@ jobs:
       - name: Set GITHUB_GOLANG_VERSION
         run: echo "GITHUB_GOLANG_VERSION=${{ steps.setup_go.outputs.go-version }}" >> $GITHUB_ENV
 
+      - name: Set CGO_ENABLED=1
+        run: echo "CGO_ENABLED=1" >> $GITHUB_ENV
+
       - name: Test
         # TODO: Skip until freebsd provider is merged. Then this 'if' should be removed.
         # if: ${{ hashFiles('providers/freebsd/') != '' }}
@@ -119,15 +122,15 @@ jobs:
         uses: vmactions/freebsd-vm@783ae15c0393f8a2582a139f76cc55f2d887b4a6 #v1.2.6
         with:
           usesh: true
+          envs: 'GITHUB_GOLANG_VERSION CGO_ENABLED'
           prepare: |
             freebsd-version
             pwd
-            ls -lah
             whoami
 
             pkg install -y curl
-            curl -sL -o /usr/bin/gvm https://github.com/andrewkroh/gvm/releases/download/v0.6.0/gvm-freebsd-amd64
-            chmod +x /usr/bin/gvm
+            curl -sL -o /usr/local/bin/gvm https://github.com/andrewkroh/gvm/releases/download/v0.6.0/gvm-freebsd-amd64
+            chmod +x /usr/local/bin/gvm
             eval "$(gvm ${GITHUB_GOLANG_VERSION})"
             go version
 
