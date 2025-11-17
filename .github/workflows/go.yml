@@ -123,6 +123,9 @@ jobs:
         with:
           usesh: true
           envs: 'GITHUB_GOLANG_VERSION CGO_ENABLED'
+          # release: "15.0"
+          # arch: aarch64
+          copyback: false
           prepare: |
             freebsd-version
             pwd
