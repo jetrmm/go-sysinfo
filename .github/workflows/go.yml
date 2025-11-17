@@ -120,8 +120,6 @@ jobs:
         run: echo "CGO_ENABLED=1" >> $GITHUB_ENV
 
       - name: Test
-        # TODO: Skip until freebsd provider is merged. Then this 'if' should be removed.
-        # if: ${{ hashFiles('providers/freebsd/') != '' }}
         id: test
         uses: vmactions/freebsd-vm@b9c3f24600acdef618ef1c9e2d3c6eeda4dce712  #v1.2.7
         with:
