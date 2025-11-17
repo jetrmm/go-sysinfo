@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//go:build freebsd
+//go:build freebsd && cgo
 
 package freebsd
 
