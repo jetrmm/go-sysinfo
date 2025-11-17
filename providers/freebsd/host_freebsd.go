@@ -22,11 +22,17 @@ package freebsd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
 	"time"
+	"unsafe"
 
 	"github.com/prometheus/procfs"
+	"golang.org/x/sys/unix"
 
 	"github.com/elastic/go-sysinfo/internal/registry"
 	"github.com/elastic/go-sysinfo/providers/shared"
@@ -235,4 +241,219 @@ type procFS struct {
 func (fs *procFS) path(p ...string) string {
 	elem := append([]string{fs.mountPoint}, p...)
 	return filepath.Join(elem...)
+}
+
+var tickDuration = sync.OnceValues(func() (time.Duration, error) {
+	const mib = "kern.clockrate"
+
+	c, err := unix.SysctlClockinfo(mib)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get %s: %w", mib, err)
+	}
+	return time.Duration(c.Tick) * time.Microsecond, nil
+})
+
+var pageSizeBytes = sync.OnceValues(func() (uint64, error) {
+	const mib = "vm.stats.vm.v_page_size"
+
+	v, err := unix.SysctlUint32(mib)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get %s: %w", mib, err)
+	}
+
+	return uint64(v), nil
+})
+
+func (r *reader) activePageCount() uint64 {
+	const mib = "vm.stats.vm.v_active_count"
+
+	v, err := unix.SysctlUint32(mib)
+	if r.addErr(err) {
+		return 0
+	}
+	return uint64(v)
+}
+
+// buffersUsedBytes returns the number memory bytes used as disk cache.
+func (r *reader) buffersUsedBytes() uint64 {
+	const mib = "vfs.bufspace"
+
+	v, err := unix.SysctlUint64(mib)
+	if r.addErr(err) {
+		return 0
+	}
+
+	return v
+}
+
+func (r *reader) cachePageCount() uint64 {
+	const mib = "vm.stats.vm.v_cache_count"
+
+	v, err := unix.SysctlUint32(mib)
+	if r.addErr(err) {
+		return 0
+	}
+
+	return uint64(v)
+}
+
+func architecture() (string, error) {
+	const mib = "hw.machine"
+
+	arch, err := unix.Sysctl(mib)
+	if err != nil {
+		return "", fmt.Errorf("failed to get architecture: %w", err)
+	}
+
+	return arch, nil
+}
+
+func bootTime() (time.Time, error) {
+	const mib = "kern.boottime"
+
+	tv, err := unix.SysctlTimeval(mib)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("failed to get host uptime: %w", err)
+	}
+
+	bootTime := time.Unix(tv.Sec, tv.Usec*int64(time.Microsecond))
+	return bootTime, nil
+}
+
+const sizeOfUint64 = int(unsafe.Sizeof(uint64(0)))
+
+// cpuStateTimes uses sysctl kern.cp_time to get the amount of time spent in
+// different CPU states.
+func cpuStateTimes() (*types.CPUTimes, error) {
+	tickDuration, err := tickDuration()
+	if err != nil {
+		return nil, err
+	}
+
+	const mib = "kern.cp_time"
+	buf, err := unix.SysctlRaw(mib)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get %s: %w", mib, err)
+	}
+
+	var clockTicks [unix.CPUSTATES]uint64
+	if len(buf) < len(clockTicks)*sizeOfUint64 {
+		return nil, fmt.Errorf("kern.cp_time data is too short (got %d bytes)", len(buf))
+	}
+	for i := range clockTicks {
+		val := *(*uint64)(unsafe.Pointer(&buf[sizeOfUint64*i]))
+		clockTicks[i] = val
+	}
+
+	return &types.CPUTimes{
+		User:   time.Duration(clockTicks[unix.CP_USER]) * tickDuration,
+		System: time.Duration(clockTicks[unix.CP_SYS]) * tickDuration,
+		Idle:   time.Duration(clockTicks[unix.CP_IDLE]) * tickDuration,
+		IRQ:    time.Duration(clockTicks[unix.CP_INTR]) * tickDuration,
+		Nice:   time.Duration(clockTicks[unix.CP_NICE]) * tickDuration,
+	}, nil
+}
+
+func (r *reader) freePageCount() uint64 {
+	const mib = "vm.stats.vm.v_free_count"
+
+	v, err := unix.SysctlUint32(mib)
+	if r.addErr(err) {
+		return 0
+	}
+
+	return uint64(v)
+}
+
+func (r *reader) inactivePageCount() uint64 {
+	const mib = "vm.stats.vm.v_inactive_count"
+
+	v, err := unix.SysctlUint32(mib)
+	if r.addErr(err) {
+		return 0
+	}
+
+	return uint64(v)
+}
+
+func kernelVersion() (string, error) {
+	const mib = "kern.osrelease"
+
+	version, err := unix.Sysctl(mib)
+	if err != nil {
+		return "", fmt.Errorf("failed to get kernel version: %w", err)
+	}
+
+	return version, nil
+}
+
+func machineID() (string, error) {
+	const mib = "kern.hostuuid"
+
+	uuid, err := unix.Sysctl(mib)
+	if err != nil {
+		return "", fmt.Errorf("failed to get machine id: %w", err)
+	}
+
+	return uuid, nil
+}
+
+func operatingSystem() (*types.OSInfo, error) {
+	info := &types.OSInfo{
+		Type:     "freebsd",
+		Family:   "freebsd",
+		Platform: "freebsd",
+	}
+
+	osType, err := unix.Sysctl("kern.ostype")
+	if err != nil {
+		return info, err
+	}
+	info.Name = osType
+
+	// Example: 13.0-RELEASE-p11
+	osRelease, err := unix.Sysctl("kern.osrelease")
+	if err != nil {
+		return info, err
+	}
+	info.Version = osRelease
+
+	releaseParts := strings.Split(osRelease, "-")
+
+	majorMinor := strings.Split(releaseParts[0], ".")
+	if len(majorMinor) > 0 {
+		info.Major, _ = strconv.Atoi(majorMinor[0])
+	}
+	if len(majorMinor) > 1 {
+		info.Minor, _ = strconv.Atoi(majorMinor[1])
+	}
+
+	if len(releaseParts) > 1 {
+		info.Build = releaseParts[1]
+	}
+	if len(releaseParts) > 2 {
+		info.Patch, _ = strconv.Atoi(strings.TrimPrefix(releaseParts[2], "p"))
+	}
+
+	return info, nil
+}
+
+func (r *reader) totalPhysicalMem() uint64 {
+	const mib = "hw.physmem"
+
+	v, err := unix.SysctlUint64(mib)
+	if r.addErr(err) {
+		return 0
+	}
+	return v
+}
+
+func (r *reader) wirePageCount() uint64 {
+	const mib = "vm.stats.vm.v_wire_count"
+
+	v, err := unix.SysctlUint32(mib)
+	if r.addErr(err) {
+		return 0
+	}
+	return uint64(v)
 }
