@@ -1,6 +1,6 @@
 # go-sysinfo
 
-[![go](https://github.com/elastic/go-sysinfo/actions/workflows/go.yml/badge.svg)](https://github.com/elastic/go-sysinfo/actions/workflows/go.yml)
+[![go](https://github.com/jetrmm/go-sysinfo/actions/workflows/go.yml/badge.svg)](https://github.com/jetrmm/go-sysinfo/actions/workflows/go.yml)
 [![Go Documentation](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)][godocs]
 
 [godocs]: http://godoc.org/github.com/elastic/go-sysinfo
