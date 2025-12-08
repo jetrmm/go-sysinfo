@@ -164,3 +164,9 @@ func TestOperatingSystem(t *testing.T) {
 		t.Logf("%#v", os)
 	})
 }
+
+func TestGetLoadAverage(t *testing.T) {
+	a, err := getLoadAverage()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, a)
+}

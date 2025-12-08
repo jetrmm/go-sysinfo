@@ -84,6 +84,21 @@ func (h *host) FQDN() (string, error) {
 	return h.FQDNWithContext(context.Background())
 }
 
+func (h *host) LoadAverage() (*types.LoadAverageInfo, error) {
+	load, err := getLoadAverage()
+	if err != nil {
+		return nil, err
+	}
+
+	scale := float64(load.scale)
+
+	return &types.LoadAverageInfo{
+		One:     float64(load.load[0]) / scale,
+		Five:    float64(load.load[1]) / scale,
+		Fifteen: float64(load.load[2]) / scale,
+	}, nil
+}
+
 func newHost() (*host, error) {
 	h := &host{}
 	r := &reader{}
@@ -297,6 +312,48 @@ func (r *reader) cachePageCount() uint64 {
 	return uint64(v)
 }
 
+func (r *reader) freePageCount() uint64 {
+	const mib = "vm.stats.vm.v_free_count"
+
+	v, err := unix.SysctlUint32(mib)
+	if r.addErr(err) {
+		return 0
+	}
+
+	return uint64(v)
+}
+
+func (r *reader) inactivePageCount() uint64 {
+	const mib = "vm.stats.vm.v_inactive_count"
+
+	v, err := unix.SysctlUint32(mib)
+	if r.addErr(err) {
+		return 0
+	}
+
+	return uint64(v)
+}
+
+func (r *reader) totalPhysicalMem() uint64 {
+	const mib = "hw.physmem"
+
+	v, err := unix.SysctlUint64(mib)
+	if r.addErr(err) {
+		return 0
+	}
+	return v
+}
+
+func (r *reader) wirePageCount() uint64 {
+	const mib = "vm.stats.vm.v_wire_count"
+
+	v, err := unix.SysctlUint32(mib)
+	if r.addErr(err) {
+		return 0
+	}
+	return uint64(v)
+}
+
 func architecture() (string, error) {
 	const mib = "hw.machine"
 
@@ -354,28 +411,6 @@ func cpuStateTimes() (*types.CPUTimes, error) {
 	}, nil
 }
 
-func (r *reader) freePageCount() uint64 {
-	const mib = "vm.stats.vm.v_free_count"
-
-	v, err := unix.SysctlUint32(mib)
-	if r.addErr(err) {
-		return 0
-	}
-
-	return uint64(v)
-}
-
-func (r *reader) inactivePageCount() uint64 {
-	const mib = "vm.stats.vm.v_inactive_count"
-
-	v, err := unix.SysctlUint32(mib)
-	if r.addErr(err) {
-		return 0
-	}
-
-	return uint64(v)
-}
-
 func kernelVersion() (string, error) {
 	const mib = "kern.osrelease"
 
@@ -385,6 +420,22 @@ func kernelVersion() (string, error) {
 	}
 
 	return version, nil
+}
+
+type loadAvg struct {
+	load  [3]uint32
+	scale int
+}
+
+func getLoadAverage() (*loadAvg, error) {
+	const mib = "vm.loadavg"
+
+	data, err := unix.SysctlRaw(mib)
+	if err != nil {
+		return nil, err
+	}
+	load := *(*loadAvg)(unsafe.Pointer((&data[0])))
+	return &load, nil
 }
 
 func machineID() (string, error) {
@@ -436,24 +487,4 @@ func operatingSystem() (*types.OSInfo, error) {
 	}
 
 	return info, nil
-}
-
-func (r *reader) totalPhysicalMem() uint64 {
-	const mib = "hw.physmem"
-
-	v, err := unix.SysctlUint64(mib)
-	if r.addErr(err) {
-		return 0
-	}
-	return v
-}
-
-func (r *reader) wirePageCount() uint64 {
-	const mib = "vm.stats.vm.v_wire_count"
-
-	v, err := unix.SysctlUint32(mib)
-	if r.addErr(err) {
-		return 0
-	}
-	return uint64(v)
 }
