@@ -21,7 +21,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-go@v6
         with:
@@ -66,7 +66,7 @@ jobs:
           - {go: oldstable, os: ubuntu-22.04}
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-go@v6
         id: setup_go
@@ -106,7 +106,7 @@ jobs:
     runs-on: ubuntu-latest
     name: test (stable, freebsd-14.3, cgo)
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-go@v6
         id: setup_go
@@ -121,7 +121,7 @@ jobs:
 
       - name: Test
         id: test
-        uses: vmactions/freebsd-vm@b9c3f24600acdef618ef1c9e2d3c6eeda4dce712  #v1.2.7
+        uses: vmactions/freebsd-vm@c54ba3b62f49de9b67a2f3af017ab6152f0ebb6f  #v1.3.4
         with:
           usesh: true
           envs: 'GITHUB_GOLANG_VERSION CGO_ENABLED'
